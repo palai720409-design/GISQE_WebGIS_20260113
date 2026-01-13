@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="utf-8" />
+    <title>Web GIS Example - Leaflet</title>
+
+    <!-- Leaflet CSS -->
+    <link
+        rel="stylesheet"
+        href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+        crossorigin=""
+    />
+
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* 額外資訊面板（顯示 attribute query 結果） */
+        #info-panel {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 1000;
+            background: white;
+            padding: 10px;
+            border-radius: 4px;
+            box-shadow: 0 0 6px rgba(0,0,0,0.3);
+            font-family: Arial, sans-serif;
+            font-size: 12px;
+            max-width: 250px;
+        }
+
+        #info-panel h4 {
+            margin: 0 0 5px 0;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+
+<div id="map"></div>
+<div id="info-panel">
+    <h4>屬性查詢結果</h4>
+    <div id="info-content">點選地圖上的圖層要素來查看屬性。</div>
+</div>
+
+<!-- Leaflet JS -->
+<script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+    crossorigin="">
+</script>
+
+<script>
+    // 1. 初始化地圖（pan、zoom 功能 Leaflet 內建）
+    var map = L.map('map').setView([25.04, 121.55], 12); // 以台北市為例
+
+    // 2. 加入底圖（OpenStreetMap）
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    // 3. 建立一個簡單的 GeoJSON 圖層（示範用）
+    //   你可以改成自己的資料（點、線、面都可以）
+    var sampleGeoJSON = {
+        "type": "FeatureCollection",
+        "features": [
+            {
+                "type": "Feature",
+                "properties": {
+                    "name": "示範點位 A",
+                    "type": "Hospital",
+                    "note": "這是一個示範用的醫療點位。"
+                },
+                "geometry": {
+                    "type": "Point",
+                    "coordinates": [121.56, 25.04]
+                }
+            },
+            {
+                "type": "Feature",
+                "properties": {
+                    "name": "示範點位 B",
+                    "type": "School",
+                    "note": "這是一個示範用的學校點位。"
+                },
+                "geometry": {
+                    "type": "Point",
+                    "coordinates": [121.52, 25.05]
+                }
+            }
+        ]
+    };
+
+    // 4. 將 GeoJSON 加到地圖上，並設定 attribute query（點選事件）
+    function onEachFeature(feature, layer) {
+        // 滑鼠點選時觸發 attribute query
+        layer.on('click', function(e) {
+            var props = feature.properties;
+            var content = '<b>名稱：</b>' + (props.name || '未提供') + '<br>' +
+                          '<b>類型：</b>' + (props.type || '未提供') + '<br>' +
+                          '<b>備註：</b>' + (props.note || '未提供');
+            document.getElementById('info-content').innerHTML = content;
+        });
+
+        // 也可以順便加 popup（可有可無）
+        if (feature.properties && feature.properties.name) {
+            layer.bindPopup(feature.properties.name);
+        }
+    }
+
+    var geojsonLayer = L.geoJSON(sampleGeoJSON, {
+        onEachFeature: onEachFeature
+    }).addTo(map);
+
+    // 5. 額外：地圖點擊非圖層區域時，清除 attribute query 結果
+    map.on('click', function(e) {
+        document.getElementById('info-content').innerHTML = '點選地圖上的圖層要素來查看屬性。';
+    });
+</script>
+
+</body>
+</html>
+function onEachFeature(feature, layer) {
+    layer.on('click', function(e) {
+        var props = feature.properties;
+        var content = '<b>名稱：</b>' + (props.name || '未提供') + '<br>' +
+                      '<b>類型：</b>' + (props.type || '未提供') + '<br>' +
+                      '<b>備註：</b>' + (props.note || '未提供');
+        document.getElementById('info-content').innerHTML = content;
+    });
+}
+// 載入行政區圖層
+fetch('taipei_districts.geojson')
+  .then(res => res.json())
+  .then(data => {
+    L.geoJSON(data, {
+      style: { color: '#3388ff', weight: 1 },
+      onEachFeature: onEachDistrict
+    }).addTo(map);
+  });
+
+// 載入學校圖層
+fetch('schools.geojson')
+  .then(res => res.json())
+  .then(data => {
+    L.geoJSON(data, {
+      pointToLayer: (f, latlng) => L.circleMarker(latlng, { radius: 6, color: 'green' }),
+      onEachFeature: onEachSchool
+    }).addTo(map);
+  });
+
+// 載入醫院圖層
+fetch('hospitals.geojson')
+  .then(res => res.json())
+  .then(data => {
+    L.geoJSON(data, {
+      pointToLayer: (f, latlng) => L.circleMarker(latlng, { radius: 6, color: 'red' }),
+      onEachFeature: onEachHospital
+    }).addTo(map);
+  });
